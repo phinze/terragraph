@@ -1,0 +1,100 @@
+#!/usr/bin/env ruby
+
+class Terragraph
+  class Graph
+    attr_reader :edges
+
+    def initialize
+      @edges = []
+    end
+
+    def add_edge(source, dest)
+      @edges << [source, dest]
+    end
+
+    def to_dot
+      dot = "digraph G {\n"
+      edges.each do |(source, dest)|
+        dot += %Q(  "#{source}" -> "#{dest}"\n)
+      end
+      dot += "}\n"
+
+      dot
+    end
+  end
+
+  def input_lines
+    return @input_lines if defined? @input_lines
+
+    if input && File.readable?(input)
+      @input_lines = File.readlines(input)
+    elsif !STDIN.tty? && !STDIN.closed?
+      @input_lines = STDIN.readlines
+    else
+      @input_lines = []
+    end
+  end
+
+  def initialize(args=ARGV)
+    @input, @output, *extra_args = args
+    @graph = Graph.new
+
+    if input_lines.empty? || extra_args.length > 0
+      puts <<-USAGE.gsub(/^      /, '')
+        NAME
+          terragraph
+
+        SYNOPSIS
+          ./terragraph [options] <input> [output]
+
+        DESCRIPTION
+          Converts textual graph notation output from terraform debug logs into
+          graphviz dot notation
+
+          Writes to output file if specified, otherwise writes to stdout.
+
+          Example of the input format accepted:
+
+          aws_instance.foo_instance
+            aws_security_group.tf_test_foo
+          aws_instance.foo_instance (destroy tainted)
+          aws_instance.foo_instance (destroy)
+          aws_security_group.tf_test_foo
+          aws_security_group.tf_test_foo (destroy tainted)
+            aws_instance.foo_instance (destroy tainted)
+          aws_security_group.tf_test_foo (destroy)
+            aws_instance.foo_instance (destroy)
+          provider.aws
+
+        OPTIONS
+          --help   Prints this output
+
+        input: input tfgraph file to read from
+        output: output dot file to write to
+
+      USAGE
+      exit 1
+    end
+  end
+
+  attr_reader :input, :output, :graph
+
+  def run
+    source = nil
+    input_lines.each do |line|
+      if line =~ /^  /
+        graph.add_edge(source, line.strip)
+      else
+        source = line.chomp
+      end
+    end
+    if output
+      File.write(output, graph.to_dot)
+    else
+      puts graph.to_dot
+    end
+  end
+end
+
+
+Terragraph.new.run
