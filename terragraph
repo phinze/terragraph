@@ -1,11 +1,19 @@
 #!/usr/bin/env ruby
 
+require 'set'
+
 class Terragraph
   class Graph
     attr_reader :edges
+    attr_reader :vertices
 
     def initialize
       @edges = []
+      @vertices = Set.new
+    end
+
+    def add_vertex(description)
+      @vertices.add(description)
     end
 
     def add_edge(source, dest)
@@ -16,6 +24,10 @@ class Terragraph
       dot = "digraph G {\n"
       edges.each do |(source, dest)|
         dot += %Q(  "#{source}" -> "#{dest}"\n)
+      end
+      vertices.each do |description|
+        elements = description.split(" - ")
+        dot += %Q(  "#{description}"[label=<#{elements[0]}<BR /><FONT POINT-SIZE="9">#{elements[1]}</FONT>>];\n)
       end
       dot += "}\n"
 
@@ -84,6 +96,7 @@ class Terragraph
     input_lines.each do |line|
       if line =~ /^  /
         graph.add_edge(source, line.strip)
+        graph.add_vertex(line.strip)
       else
         source = line.chomp
       end
@@ -95,6 +108,5 @@ class Terragraph
     end
   end
 end
-
 
 Terragraph.new.run
